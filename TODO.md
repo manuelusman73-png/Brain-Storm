@@ -1,7 +1,30 @@
-# Security Improvements TODO
+# Docker Setup Task - blackboxai/docker-setup
 
-- [x] 1. Install helmet via npm
-- [x] 2. Create apps/backend/.env.example
-- [x] 3. Update main.ts with helmet() and secure CORS
-- [x] 4. Verify changes (restart server, check headers)
+## Status: In Progress
+
+**Branch**: blackboxai/docker-setup
+
+## Steps from Plan:
+
+- [x] Information gathered (NestJS backend, no existing Docker)
+
+- [x] Plan created and approved via PR request
+
+- [ ] 1. Create branch blackboxai/docker-setup
+
+- [x] 2. Create apps/backend/Dockerfile (multi-stage)
+- [x] 3. Create docker-compose.yml (backend+postgres+redis)
+- [x] 4. Create docker-compose.override.yml (dev hot-reload)
+- [x] 5. Create .dockerignore
+
+- [ ] 6. Edit README.md (add Docker section)
+
+- [ ] 7. Test docker compose up
+
+- [ ] 8. git add/commit/push/gh pr create (--title "Add complete Docker setup for backend+DBs" --body "Implements multi-stage Dockerfile, compose for prod/dev")
+
+## Notes
+- Backend port 3000, Postgres 5432, Redis 6379
+- DB creds: brain-storm/brain-storm (override .env)
+- Dev: volume mount src/, nest start --watch
 
