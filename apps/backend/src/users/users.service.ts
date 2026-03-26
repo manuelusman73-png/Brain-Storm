@@ -11,6 +11,10 @@ export class UsersService {
     return this.repo.findOne({ where: { email } });
   }
 
+  findByVerificationToken(hash: string) {
+    return this.repo.findOne({ where: { verificationToken: hash } });
+  }
+
   findById(id: string) {
     return this.repo.findOne({ where: { id } });
   }

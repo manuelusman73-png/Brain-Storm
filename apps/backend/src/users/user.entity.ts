@@ -17,6 +17,15 @@ export class User {
   @Column({ default: 'student' })
   role: string;
 
+  @Column({ default: false })
+  isVerified: boolean;
+
+  @Column({ nullable: true, type: 'varchar' })
+  verificationToken: string | null;
+
+  @Column({ nullable: true, type: 'timestamp' })
+  verificationTokenExpiresAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }
