@@ -8,8 +8,17 @@ export class User {
   @Column({ unique: true })
   email: string;
 
+  @Column({ unique: true, nullable: true })
+  username: string;
+
   @Column()
   passwordHash: string;
+
+  @Column({ nullable: true })
+  avatar: string;
+
+  @Column({ nullable: true, type: 'text' })
+  bio: string;
 
   @Column({ nullable: true })
   stellarPublicKey: string;
@@ -25,6 +34,13 @@ export class User {
 
   @Column({ nullable: true })
   deletedAt: Date;
+  isVerified: boolean;
+
+  @Column({ nullable: true, type: 'varchar' })
+  verificationToken: string | null;
+
+  @Column({ nullable: true, type: 'timestamp' })
+  verificationTokenExpiresAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;
