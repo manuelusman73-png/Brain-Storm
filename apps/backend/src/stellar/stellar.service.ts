@@ -1,3 +1,7 @@
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Cache } from 'cache-manager';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -23,6 +27,10 @@ export class StellarService {
   private networkPassphrase: string;
   private contractId: string;
 
+  constructor(
+    private configService: ConfigService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {
   constructor(private configService: ConfigService) {
     const isTestnet = process.env.STELLAR_NETWORK !== 'mainnet';
     this.network = isTestnet ? 'testnet' : 'mainnet';
@@ -39,8 +47,33 @@ export class StellarService {
   }
 
   async getAccountBalance(publicKey: string) {
+    const cacheKey = `stellar:balance:${publicKey}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
     const account = await this.server.loadAccount(publicKey);
-    return account.balances;
+    const balances = account.balances;
+    await this.cacheManager.set(cacheKey, balances, 30);
+    return balances;
+  }
+
+  private async retryWithBackoff<T>(
+    fn: () => Promise<T>,
+    attempt: number = 1,
+  ): Promise<T> {
+    try {
+      return await fn();
+    } catch (error) {
+      if (attempt >= MAX_RETRIES) {
+        this.logger.error(`Max retries reached: ${error.message}`);
+        throw error;
+      }
+      const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+      this.logger.warn(`Attempt ${attempt} failed, retrying in ${delay}ms: ${error.message}`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return this.retryWithBackoff(fn, attempt + 1);
+    }
   }
 
   private async retryWithBackoff<T>(
