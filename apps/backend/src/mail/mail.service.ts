@@ -18,6 +18,25 @@ export class MailService {
     });
   }
 
+  async sendPasswordResetEmail(to: string, token: string) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    const resetUrl = `${frontendUrl}/auth/reset-password?token=${token}`;
+
+    if (process.env.EMAIL_ENABLED !== 'true') {
+      this.logger.log(`[DEV] Password reset link for ${to}: ${resetUrl}`);
+      return;
+    }
+
+    await this.transporter.sendMail({
+      from: process.env.EMAIL_FROM || '"Brain Storm" <no-reply@brainstorm.app>',
+      to,
+      subject: 'Reset your password',
+      html: `<p>Click the link below to reset your password. It expires in 1 hour.</p>
+             <a href="${resetUrl}">${resetUrl}</a>
+             <p>If you did not request this, ignore this email.</p>`,
+    });
+  }
+
   async sendVerificationEmail(to: string, token: string) {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     const verifyUrl = `${frontendUrl}/auth/verify?token=${token}`;
