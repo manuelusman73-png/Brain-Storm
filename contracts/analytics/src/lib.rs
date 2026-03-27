@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Symbol};
+use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, Env, Symbol};
 
 #[contracttype]
 pub struct ProgressRecord {
@@ -75,7 +75,21 @@ impl AnalyticsContract {
 
         env.storage()
             .persistent()
-            .set(&DataKey::Progress(student, course_id), &record);
+            .set(&DataKey::Progress(student.clone(), course_id.clone()), &record);
+
+        // Always emit progress_updated
+        env.events().publish(
+            (symbol_short!("analytics"), symbol_short!("prog_upd")),
+            (student.clone(), course_id.clone(), progress_pct),
+        );
+
+        // Emit completed only when 100%
+        if progress_pct == 100 {
+            env.events().publish(
+                (symbol_short!("analytics"), symbol_short!("completed")),
+                (student, course_id),
+            );
+        }
     }
 
     /// Get a student's progress for a course.
@@ -93,8 +107,8 @@ impl AnalyticsContract {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use soroban_sdk::testutils::Address as _;
-    use soroban_sdk::{symbol_short, Env};
+    use soroban_sdk::testutils::{Address as _, Events};
+    use soroban_sdk::{symbol_short, Env, FromVal, Symbol};
 
     fn setup() -> (Env, AnalyticsContractClient<'static>, Address, Address) {
         let env = Env::default();
@@ -213,5 +227,54 @@ mod tests {
         let (_, client, _, student) = setup();
         let course = symbol_short!("UNKNOWN");
         assert!(client.get_progress(&student, &course).is_none());
+    }
+
+    // ---- events -------------------------------------------------------------
+
+    fn has_event(env: &Env, topic1: &str, topic2: &str) -> bool {
+        let t1 = Symbol::new(env, topic1);
+        let t2 = Symbol::new(env, topic2);
+        env.events().all().iter().any(|e| {
+            let topics = e.1;
+            if topics.len() < 2 {
+                return false;
+            }
+            let s0 = Symbol::from_val(env, &topics.get(0).unwrap());
+            let s1 = Symbol::from_val(env, &topics.get(1).unwrap());
+            s0 == t1 && s1 == t2
+        })
+    }
+
+    #[test]
+    fn test_progress_updated_event_emitted() {
+        let (env, client, _, student) = setup();
+        let course = symbol_short!("RUST101");
+        client.record_progress(&student, &student, &course, &50);
+        assert!(has_event(&env, "analytics", "prog_upd"), "progress_updated event not found");
+    }
+
+    #[test]
+    fn test_completed_event_emitted_at_100() {
+        let (env, client, _, student) = setup();
+        let course = symbol_short!("RUST101");
+        client.record_progress(&student, &student, &course, &100);
+        assert!(has_event(&env, "analytics", "completed"), "completed event not found");
+    }
+
+    #[test]
+    fn test_completed_event_not_emitted_below_100() {
+        let (env, client, _, student) = setup();
+        let course = symbol_short!("RUST101");
+        client.record_progress(&student, &student, &course, &99);
+        assert!(!has_event(&env, "analytics", "completed"), "completed event should not fire below 100");
+    }
+
+    #[test]
+    fn test_both_events_emitted_at_100() {
+        let (env, client, _, student) = setup();
+        let course = symbol_short!("RUST101");
+        client.record_progress(&student, &student, &course, &100);
+        assert!(has_event(&env, "analytics", "prog_upd"), "progress_updated event missing");
+        assert!(has_event(&env, "analytics", "completed"), "completed event missing");
     }
 }
