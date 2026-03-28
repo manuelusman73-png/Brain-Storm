@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import WalletSection from './WalletSection';
@@ -48,7 +49,7 @@ export default function ProfilePage() {
     <main className="max-w-2xl mx-auto p-8 space-y-8">
       <div className="flex items-center gap-4">
         {user.avatarUrl
-          ? <img src={user.avatarUrl} alt="avatar" className="w-16 h-16 rounded-full object-cover" />
+          ? <Image src={user.avatarUrl} alt="avatar" width={64} height={64} className="w-16 h-16 rounded-full object-cover" priority />
           : <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-2xl font-bold text-blue-600 dark:text-blue-300">{user.username[0]?.toUpperCase()}</div>
         }
         <div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/Button';
@@ -62,10 +63,14 @@ export default function ProfilePage() {
     <main className="max-w-2xl mx-auto p-8 space-y-8">
       <div className="flex items-center gap-4">
         {user.avatarUrl ? (
-          <img
+          <Image
             src={user.avatarUrl}
             alt={t('avatarAlt', { name: user.username })}
+            width={64}
+            height={64}
             className="w-16 h-16 rounded-full object-cover"
+            loading="eager"
+            priority
           />
         ) : (
           <div
