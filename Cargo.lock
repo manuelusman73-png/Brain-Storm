@@ -103,6 +103,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "brain-storm-certificate"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+]
+
+[[package]]
+name = "brain-storm-governance"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+]
+
+[[package]]
 name = "brain-storm-shared"
 version = "0.1.0"
 dependencies = [

@@ -14,6 +14,7 @@ pub enum DataKey {
     Allowance(Address, Address), // (owner, spender)
     TotalSupply,
     Vesting(Address),
+    Locked,                       // reentrancy guard
 }
 
 // =============================================================================
@@ -634,5 +635,3 @@ mod tests {
         client.initialize(&admin);
     }
 }
-
-mod tests;
