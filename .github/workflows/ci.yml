@@ -8,7 +8,7 @@ on:
 
 jobs:
   backend-test:
-    name: Backend — Install · Build · Test
+    name: Backend - Install, Build, Test, Lint
     runs-on: ubuntu-latest
 
     steps:
@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Lint backend
+        run: npm run lint --workspace=apps/backend
+
       - name: Build backend
         run: npm run build --workspace=apps/backend
 
@@ -36,7 +39,7 @@ jobs:
         continue-on-error: true
 
   backend-integration-test:
-    name: Backend — Integration Tests (PostgreSQL)
+    name: Backend - Integration Tests (PostgreSQL)
     runs-on: ubuntu-latest
 
     services:
@@ -63,7 +66,7 @@ jobs:
           NODE_ENV: test
 
   backend-soroban-test:
-    name: Backend — Soroban Testnet Tests
+    name: Backend - Soroban Testnet Tests
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
@@ -101,7 +104,7 @@ jobs:
           STELLAR_SECRET_KEY: ${{ secrets.STELLAR_SECRET_KEY }}
 
   frontend-build:
-    name: Frontend — Install · Build
+    name: Frontend - Install, Build, Lint
     runs-on: ubuntu-latest
 
     steps:
@@ -117,11 +120,14 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Lint frontend
+        run: npm run lint --workspace=apps/frontend
+
       - name: Build frontend
         run: npm run build --workspace=apps/frontend
 
   chromatic-visual-tests:
-    name: Frontend — Visual Regression Tests (Chromatic)
+    name: Frontend - Visual Regression Tests (Chromatic)
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
 
@@ -151,7 +157,7 @@ jobs:
           exitZeroOnChanges: true
 
   contracts-check:
-    name: Contracts — Test · Format · Lint
+    name: Contracts - Test, Format, Lint, Audit, Deny
     runs-on: ubuntu-latest
 
     steps:
@@ -176,8 +182,14 @@ jobs:
       - name: cargo clippy
         run: cargo clippy -- -D warnings
 
+      - name: cargo audit
+        run: cargo audit --deny warnings
+
+      - name: cargo deny
+        run: cargo deny check
+
   load-tests:
-    name: Load Tests — k6
+    name: Load Tests - k6
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
 
@@ -193,4 +205,125 @@ jobs:
           ./scripts/load-test.sh
         env:
           API_URL: http://localhost:3000
+        continue-on-error: true
+
+  sonarcloud:
+    name: Code Quality - SonarCloud
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate frontend coverage
+        run: npm run test:coverage --workspace=apps/frontend
+        continue-on-error: true
+
+      - name: Generate backend coverage
+        run: npm run test --workspace=apps/backend -- --coverage
+        working-directory: apps/backend
+        continue-on-error: true
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  security-scan:
+    name: Security - OWASP ZAP Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: brainstorm_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Start backend server
+        run: npm run start:prod --workspace=apps/backend &
+        env:
+          NODE_ENV: production
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/brainstorm_test
+          REDIS_URL: redis://localhost:6379
+        timeout-minutes: 2
+
+      - name: Wait for backend to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -f http://localhost:3000/health; then
+              echo "Backend is ready"
+              exit 0
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 2
+          done
+          echo "Backend failed to start"
+          exit 1
+
+      - name: Run OWASP ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.7.0
+        with:
+          target: 'http://localhost:3000'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: report_html.html
+          retention-days: 30
+
+      - name: Check for HIGH severity findings
+        run: |
+          if grep -q "HIGH" report_html.html; then
+            echo "HIGH severity findings detected in ZAP scan"
+            exit 1
+          fi
         continue-on-error: true
