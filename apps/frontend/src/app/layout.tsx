@@ -4,11 +4,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return children;
 import type { Metadata } from 'next';
 import './globals.css';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { Navbar } from '@/components/Navbar';
-import { Toaster } from '@/components/ui/Toaster';
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://brain-storm.app';
+import NetworkStatus from '@/components/ui/NetworkStatus';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -43,12 +39,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors">
-        <ThemeProvider>
-          <Navbar />
-          {children}
-        </ThemeProvider>
+    <html lang="en">
+      <body className="antialiased">
+        {children}
+        <NetworkStatus />
       </body>
     </html>
   );
