@@ -13,6 +13,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test --reporter=github",
+    "test:pact": "vitest run --include '**/*.pact.test.ts'",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "chromatic": "chromatic --project-token=$CHROMATIC_PROJECT_TOKEN"
@@ -37,6 +38,7 @@
   "devDependencies": {
     "@axe-core/react": "^4.11.1",
     "@chromatic-com/storybook": "^1.0.0",
+    "@pact-foundation/pact": "^4.5.0",
     "@playwright/test": "^1.44.0",
     "@storybook/addon-essentials": "^7.6.0",
     "@storybook/addon-interactions": "^7.6.0",
