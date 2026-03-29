@@ -1,16 +1,20 @@
-import { Controller, Get, Param, Query, Patch, Delete, Body, UseGuards, Request, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Param, Query, Patch, Delete, Body, UseGuards, Request, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { StellarService } from '../stellar/stellar.service';
 
 @ApiTags('users')
 @ApiBearerAuth()
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly stellarService: StellarService,
+  ) {}
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
@@ -25,6 +29,34 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'User not found' })
   findOne(@Param('id') id: string) {
     return this.usersService.findById(id);
+  }
+
+  @Get(':id/token-balance')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: "Get user's BST token balance from the Token contract" })
+  @ApiResponse({ status: 200, description: 'Returns BST token balance', schema: { example: { data: { balance: '1000' }, statusCode: 200, timestamp: '2024-01-01T00:00:00.000Z' } } })
+  @ApiResponse({ status: 404, description: 'User not found or no Stellar public key linked' })
+  async getTokenBalance(@Param('id') id: string) {
+    const user = await this.usersService.findById(id);
+    if (!user) throw new NotFoundException('User not found');
+    if (!user.stellarPublicKey) {
+      throw new NotFoundException('User has no Stellar public key linked');
+    }
+    const balance = await this.stellarService.getTokenBalance(user.stellarPublicKey);
+    return { balance };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/token-balance')
+  @ApiOperation({ summary: 'Get BST token balance for a user' })
+  @ApiResponse({ status: 200, description: 'Returns BST token balance', schema: { example: { balance: '1000', stellarPublicKey: 'G...' } } })
+  @ApiResponse({ status: 404, description: 'User not found or no Stellar key linked' })
+  async getTokenBalance(@Param('id') id: string) {
+    const user = await this.usersService.findById(id);
+    if (!user) throw new NotFoundException('User not found');
+    if (!user.stellarPublicKey) throw new NotFoundException('User has no Stellar public key linked');
+    const balance = await this.stellarService.getTokenBalance(user.stellarPublicKey);
+    return { balance, stellarPublicKey: user.stellarPublicKey };
   }
 
   @UseGuards(JwtAuthGuard)

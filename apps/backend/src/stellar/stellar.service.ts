@@ -83,6 +83,48 @@ export class StellarService {
     return this.mintCredentialViaHorizon(recipientPublicKey, courseId);
   }
 
+  /** Read BST balance for an address from the Token contract (read-only simulate) */
+  async getTokenBalance(stellarPublicKey: string): Promise<string> {
+    if (!this.tokenContractId) {
+      throw new Error('TOKEN_CONTRACT_ID not configured');
+    }
+
+    const cacheKey = `token_balance:${stellarPublicKey}`;
+    const cached = await this.cacheManager.get<string>(cacheKey);
+    if (cached !== undefined && cached !== null) return cached;
+
+    const issuerKeypair = Keypair.fromSecret(
+      this.configService.get<string>('stellar.secretKey'),
+    );
+    const source = await this.sorobanServer.getAccount(issuerKeypair.publicKey());
+
+    const tx = new TransactionBuilder(source as any, {
+      fee: BASE_FEE,
+      networkPassphrase: this.networkPassphrase,
+    })
+      .addOperation(
+        Operation.invokeContractFunction({
+          contract: this.tokenContractId,
+          function: 'balance',
+          args: [new Address(stellarPublicKey).toScVal()],
+        }),
+      )
+      .setTimeout(30)
+      .build();
+
+    const simResult = await this.sorobanServer.simulateTransaction(tx);
+
+    if (SorobanRpc.Api.isSimulationError(simResult)) {
+      throw new Error(`Token balance simulation failed: ${simResult.error}`);
+    }
+
+    const retVal = (simResult as SorobanRpc.Api.SimulateTransactionSuccessResponse).result?.retval;
+    const balance = retVal ? BigInt(retVal.value() as bigint).toString() : '0';
+
+    await this.cacheManager.set(cacheKey, balance, 30_000);
+    return balance;
+  }
+
   /** Mint reward tokens via the Token Soroban contract */
   async mintReward(
     recipientPublicKey: string,
