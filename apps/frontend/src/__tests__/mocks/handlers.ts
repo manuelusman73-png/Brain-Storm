@@ -2,18 +2,40 @@ import { http, HttpResponse } from 'msw';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
+const ALL_COURSES = [
+  { id: '1', title: 'Intro to Stellar Blockchain', level: 'beginner', durationHours: 4, isPublished: true },
+  { id: '2', title: 'Soroban Smart Contracts', level: 'intermediate', durationHours: 8, isPublished: true },
+  { id: '3', title: 'DeFi on Stellar', level: 'advanced', durationHours: 12, isPublished: true },
+];
+
 export const handlers = [
-  http.get(`${BASE}/courses`, () =>
-    HttpResponse.json({
-      data: [
-        { id: '1', title: 'Intro to Stellar Blockchain', level: 'beginner', durationHours: 4, isPublished: true },
-        { id: '2', title: 'Soroban Smart Contracts', level: 'intermediate', durationHours: 8, isPublished: true },
-      ],
-      total: 2,
-      page: 1,
-      limit: 20,
-    }),
-  ),
+  http.get(`${BASE}/courses`, (req) => {
+    const search = req.url.searchParams.get('search')?.toLowerCase() ?? '';
+    const level = req.url.searchParams.get('level')?.toLowerCase() ?? '';
+    const page = Number(req.url.searchParams.get('page') ?? '1');
+    const limit = Number(req.url.searchParams.get('limit') ?? '5');
+
+    let filtered = ALL_COURSES;
+
+    if (search) {
+      filtered = filtered.filter((course) => course.title.toLowerCase().includes(search));
+    }
+
+    if (level) {
+      filtered = filtered.filter((course) => course.level === level);
+    }
+
+    const total = filtered.length;
+    const offset = (Math.max(page, 1) - 1) * limit;
+    const paged = filtered.slice(offset, offset + limit);
+
+    return HttpResponse.json({
+      data: paged,
+      total,
+      page: Math.max(page, 1),
+      limit,
+    });
+  }),
 
   http.get(`${BASE}/users/me`, () =>
     HttpResponse.json({
