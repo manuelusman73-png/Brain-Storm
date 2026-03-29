@@ -70,6 +70,7 @@ async function bootstrap() {
       },
       'JWT-auth'
     )
+    .addApiKey({ type: 'apiKey', in: 'header', name: 'X-API-KEY' }, 'X-API-KEY')
     .addServer('/v1', 'API v1')
     .build();
   
