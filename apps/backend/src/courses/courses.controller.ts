@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { CoursesService } from './courses.service';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -33,7 +33,9 @@ export class CoursesController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'instructor')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new course' })
+  @ApiBody({ schema: { example: { title: 'Intro to Stellar', description: 'Learn Stellar basics', level: 'beginner' } } })
   @ApiResponse({ status: 201, description: 'Course created successfully', schema: { example: { data: {}, statusCode: 201, timestamp: '2024-01-01T00:00:00.000Z' } } })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - insufficient permissions' })
@@ -44,7 +46,9 @@ export class CoursesController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'instructor')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a course' })
+  @ApiBody({ schema: { example: { title: 'Updated title', description: 'Updated description' } } })
   @ApiResponse({ status: 200, description: 'Course updated successfully', schema: { example: { data: {}, statusCode: 200, timestamp: '2024-01-01T00:00:00.000Z' } } })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - insufficient permissions' })
@@ -56,6 +60,7 @@ export class CoursesController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'instructor')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a course' })
   @ApiResponse({ status: 200, description: 'Course deleted successfully', schema: { example: { data: {}, statusCode: 200, timestamp: '2024-01-01T00:00:00.000Z' } } })
   @ApiResponse({ status: 401, description: 'Unauthorized' })

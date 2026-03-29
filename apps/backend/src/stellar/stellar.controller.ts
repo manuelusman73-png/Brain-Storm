@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { StellarService } from './stellar.service';
 import { NetworkMonitorService } from './network-monitor.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -35,6 +35,7 @@ export class StellarController {
   @Roles('admin')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Mint a credential NFT' })
+  @ApiBody({ schema: { example: { recipientPublicKey: 'GABC...', courseId: 'uuid' } } })
   @ApiResponse({ status: 201, description: 'Credential minted successfully', schema: { example: { data: 'transaction_hash', statusCode: 201, timestamp: '2024-01-01T00:00:00.000Z' } } })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
@@ -54,6 +55,7 @@ export class CredentialsController {
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @Roles('admin')
   @ApiOperation({ summary: 'Issue a credential for course completion' })
+  @ApiBody({ schema: { example: { recipientPublicKey: 'GABC...', courseId: 'uuid' } } })
   @ApiResponse({ status: 201, description: 'Credential issued successfully', schema: { example: { data: 'transaction_hash', statusCode: 201, timestamp: '2024-01-01T00:00:00.000Z' } } })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })

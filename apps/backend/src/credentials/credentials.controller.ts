@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -14,14 +14,17 @@ export class CredentialsController {
 
   @Get(':userId')
   @ApiOperation({ summary: 'List all credentials for a user' })
-  @ApiResponse({ status: 200, description: 'List of credentials' })
+  @ApiResponse({ status: 200, description: 'List of credentials', schema: { example: [{ id: 'uuid', courseId: 'uuid', txHash: 'abc123', issuedAt: '2024-01-01T00:00:00.000Z' }] } })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   findByUser(@Param('userId') userId: string) {
     return this.credentialsService.findByUser(userId);
   }
 
   @Get('verify/:txHash')
-  @ApiOperation({ summary: 'Verify a credential on-chain by txHash' })
-  @ApiResponse({ status: 200, description: 'Verification result' })
+  @ApiOperation({ summary: 'Verify a credential on-chain by transaction hash' })
+  @ApiResponse({ status: 200, description: 'Verification result', schema: { example: { valid: true, txHash: 'abc123' } } })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Transaction not found' })
   verify(@Param('txHash') txHash: string) {
     return this.credentialsService.verify(txHash);
   }
@@ -30,7 +33,10 @@ export class CredentialsController {
   @UseGuards(RolesGuard)
   @Roles('admin')
   @ApiOperation({ summary: 'Admin: manually issue a credential' })
-  @ApiResponse({ status: 201, description: 'Credential issued' })
+  @ApiBody({ schema: { example: { userId: 'uuid', courseId: 'uuid', stellarPublicKey: 'GABC...' } } })
+  @ApiResponse({ status: 201, description: 'Credential issued', schema: { example: { id: 'uuid', txHash: 'abc123' } } })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
   issue(@Body() body: { userId: string; courseId: string; stellarPublicKey: string }) {
     return this.credentialsService.issue(body.userId, body.courseId, body.stellarPublicKey);
   }
