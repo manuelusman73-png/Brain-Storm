@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiSecurity } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -30,8 +30,10 @@ export class CredentialsController {
   @Post('issue')
   @UseGuards(AuthGuard(['jwt', 'api-key']), RolesGuard)
   @Roles('admin')
-  @ApiOperation({ summary: 'Admin: manually issue a credential' })
+  @ApiSecurity('X-API-KEY')
+  @ApiOperation({ summary: 'Issue a credential — accepts JWT (admin) or service API key' })
   @ApiResponse({ status: 201, description: 'Credential issued' })
+  @ApiResponse({ status: 401, description: 'Unauthorized — provide a valid JWT or X-API-KEY header' })
   issue(@Body() body: { userId: string; courseId: string; stellarPublicKey: string }) {
     return this.credentialsService.issue(body.userId, body.courseId, body.stellarPublicKey);
   }
